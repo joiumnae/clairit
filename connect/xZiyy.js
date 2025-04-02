@@ -53,7 +53,7 @@ const ytdl = require('ytdl-core')
 const speed = require('performance-now')
 const more = String.fromCharCode(8206); 
 const readmore = more.repeat(4001);
-const { bytesToSize, getRandomFile, smsg, checkBandwidth, sleep, formatSize, getRandom, format, getBuffer, isUrl, jsonformat, nganuin, pickRandom, runtime, shorturl, formatp, fetchJson, color, getGroupAdmins } = require("../library/myfunc");
+const { bytesToSize, getRandomFile, smsg, checkBandwidth, sleep, formatSize, getRandom, format, getBuffer, isUrl, jsonformat, nganuin, pickRandom, runtime, clockString, shorturl, formatp, fetchJson, color, getGroupAdmins } = require("../library/myfunc");
 const { addExif } = require('../library/exif')
 const yetedln = require("../media/scraper/yetedln")
 const apiUrlw = 'https://clairity-nine.vercel.app'
@@ -77,6 +77,9 @@ let tebaksusunkata = []
 let tebaktekateki = []
 let tebakjkt48 = []
 let _family100 = db.data.game.family100 = []
+
+const list = JSON.parse(fs.readFileSync("./media/database/list.json"))
+
 
 module.exports = fuzzy = async (fuzzy, m, msg, chatUpdate, store) => {
 const { type, sender, pushname, isGroup } = m
@@ -136,6 +139,11 @@ const isAdmins = m?.isGroup ? groupAdmins.includes(m?.sender) : false;
 const groupOwner = m?.isGroup ? groupMetadata.owner || '' : '';
 const isGroupOwner = m?.isGroup ? (groupOwner ? groupOwner : groupAdmins).includes(m?.sender) : false;
     
+const mentionByTag = msg.xtype == "extendedTextMessage" && msg.message.extendedTextMessage.contextInfo != null ? msg.message.extendedTextMessage.contextInfo.mentionedJid : []
+const mentionByreply = msg.xtype == "extendedTextMessage" && msg.message.extendedTextMessage.contextInfo != null ? msg.message.extendedTextMessage.contextInfo.participant || "" : ""       
+const mention = typeof(mentionByTag) == 'string' ? [mentionByTag] : mentionByTag
+mention != undefined ? mention.push(mentionByreply) : []
+const mentionUser = mention != undefined ? mention.filter(n => n) : false 
 
 let datauser = JSON.parse(fs.readFileSync('./media/database/datauser.json'))
 
@@ -175,7 +183,13 @@ let isNumber = x => typeof x === 'number' && !isNaN(x)
 let user = global.db.data.users[m?.sender]
 if (typeof user !== 'object') global.db.data.users[m?.sender] = {}
 if (user) {
+        if (!isNumber(user.afkTime)) user.afkTime = -1
+        if (!('isBanned' in user)) user.isBanned = false
+        if (!('afkReason' in user)) user.afkReason = ''
 } else global.db.data.users[m?.sender] = {
+        afkTime: -1,
+        afkReason: '',
+        isBanned: false,
 }
 
 // chats
@@ -184,9 +198,11 @@ if (user) {
  if (chats) {
  if (!('isBanned' in chat)) chat.isBanned = false
  if (!('autoai' in chats)) chats.autoai = false
+ if (!('welcome' in chats)) chats.welcome = false
 } else global.db.data.chats[m.chat] = {
 autoai: false,
 isBanned: false,
+welcome: false,
 }
 // setting
 let setting = global.db.data.settings[botNumber]
@@ -212,7 +228,6 @@ if (isCmd && !isUser) {
 datauser.push(m.sender)
 fs.writeFileSync('./media/database/datauser.json', JSON.stringify(datauser, null, 2))
 }
-
 //======[ SETTING ]=======\\
 // self public
 if ((m?.chat in global.db.data.chats || m?.sender in global.db.data.users)) {
@@ -224,6 +239,38 @@ if (chat && chat.isBanned && !isCreator) return
 if (db.data.settings[botNumber].autoread) { fuzzy.readMessages([m?.key]) }
 
 if (isCmd) {
+let check = list.find(e => e.cmd === command)
+if (check) {
+await m.reply(check.respon)
+}
+    let categories = [];
+    try {
+        categories = JSON.parse(fs.readFileSync("./media/database/listmenurespon.json"));
+    } catch (err) {
+    }
+    
+    let category = categories.find(cat => cat.category === command);
+    
+    if (category) {
+        if (category.items.length === 0) {
+            return m.reply(`Belum ada menu dalam kategori *${category.category}*`);
+        }
+        
+        let menuText = `*MENU ${category.category.toUpperCase()}*\n\n`;
+        category.items.forEach((item, index) => {
+            menuText += `${index + 1}. ${prefix}${item.cmd}\n`;
+        });
+        
+        return m.reply(menuText);
+    }
+    
+    for (const cat of categories) {
+        const item = cat.items.find(item => item.cmd === command);
+        if (item) {
+            return m.reply(item.respon);
+        }
+    }
+
     console.log(
         chalk.bgHex('#00FF00').black.bold(' [ LOG ] '),
         chalk.bgHex('#1B1B1B').green(`${moment.tz('Asia/Jakarta').format('HH:mm:ss')}`),
@@ -277,6 +324,8 @@ const reply = async (teks) => {
     }
 };
 
+
+
 //======[ PLUGIN ]=======\\
     for (let name in plugins) {
       let plugin = plugins[name]
@@ -306,7 +355,31 @@ const reply = async (teks) => {
         await plugin.exec(m, from, { q, fuzzy, args, command, prefix, reply, quoted, mime, pushname, getBuffer })
       }
     }
+    
+    // Afk
+    for (let jid of mentionUser) {
+      if (m.key.fromMe) return
+      let user = global.db.data.users[jid]
+      if (!user) continue
+      let afkTime = user.afkTime
+      if (!afkTime || afkTime < 0) continue
+      let reason = user.afkReason || ''
+      let jgntag = `Jangan Tag Dia!\nDia Lagi Afk ${reason ? 'with reason ' + reason : 'no reason'}\nJam ${clockString(new Date - afkTime)}`.trim()
+      m.reply(jgntag)
+    }
 
+    if (global.db.data.users[m.sender].afkTime > -1) {
+      let user = global.db.data.users[m.sender]
+      let kembali = `${pushname} berhenti AFK${user.afkReason ? ' after ' + user.afkReason : ''}\nDuring ${clockString(new Date - user.afkTime)}`
+      m.reply(kembali)
+      user.afkTime = -1
+      user.afkReason = ''
+    }
+
+    nowa = [`@${global.owner}`]
+    if (budy.includes(nowa) && !m.key.fromMe) {
+        reply('jangan tag owner kak, owner lagi sibuk..')
+    }
 
 //+++++++[ antilin ]++++++++++
 
@@ -314,10 +387,10 @@ const reply = async (teks) => {
     const antisalurgc = m.isGroup ? antilinkgcList.includes(from) : false;
 
   if (antisalurgc) {
-      if (budy.match('chat.whatsapp.com/')) {
-        if (isAdmins) return;
-        if (m.key.fromMe) return;
-        if (isCreator) return;
+      if (budy.match('chat.whatsapp.com')) {
+        if (isAdmins) return reply(`detect link: you are admin so i won't delete`)
+        if (m.key.fromMe) return reply(`detect link: you are owner so i won't delete`)
+        if (isCreator) return reply(`detect link: you are owner so i won't delete`)
         await fuzzy.sendMessage(m.chat, {
           delete: {
             remoteJid: m.chat,
@@ -641,12 +714,15 @@ if (tebakbendera2.hasOwnProperty(from) && !isCmd && !m.key.fromMe && m.quoted &&
       }
     }
         
-        
+if (!global.menuMode) global.menuMode = 'nobutton';
 switch(command) {
 case 'script':{
 reply(`
 ▧ 「 *LINK SCRIPT* 」
-│ https://youtu.be/0ZBGxosFqBM?si=p96f_T9ui6o3awov
+│ https://youtube.com/@xziyy?si=ykmNPTiBGBrNzA-E
+│ script ini free dilarang menjual belikan.
+│ Credits: xZiyy
+│ madein: Indonesian
 ┗─────────────
 `)
 }
@@ -660,11 +736,56 @@ fileName: 'creds.json'
 }, { quoted: m });
 }
 break
-case 'menu':{
-let speed = require('performance-now')
-let timestampe = speed();
-let latensie = speed() - timestampe
-menu =`
+case 'setmenu':
+case 'settingmenu': {
+    if (args[0] === 'button') {
+        global.menuMode = 'button';
+        reply('✅ Mode menu diubah ke button');
+    } else if (args[0] === 'nobutton') {
+        global.menuMode = 'nobutton';
+        reply('✅ Mode menu diubah ke no button');
+    } else {
+        reply('⚠️ Pilihan tidak valid! Gunakan: .settingmenu [nobutton/button]');
+    }
+}
+break;
+
+case 'menu': {
+let categories = [];
+try {
+    categories = JSON.parse(fs.readFileSync("./media/database/listmenurespon.json"));
+} catch (err) {
+    categories = []; // Jika file tidak ditemukan, gunakan array kosong
+}
+
+let menuCategories = "";
+if (categories.length > 0) {
+    categories.forEach((cat, index) => {
+        menuCategories += `\n┏─『 \`${cat.category.toUpperCase()}\` 』\n`;
+
+        // Tampilkan perintah dalam kategori
+        if (Array.isArray(cat.items)) {
+            cat.items.forEach(item => {
+                menuCategories += `│ ⿻ ${prefix}${item.cmd}\n`;
+            });
+        } else if (cat.items && cat.items.cmd) {
+            menuCategories += `│ ⿻ ${prefix}${cat.items.cmd}\n`;
+        }
+        
+        menuCategories += "┗─────────────❐\n";
+    });
+} else {
+    menuCategories = "";
+}
+
+    let speed = require('performance-now');
+    let timestampe = speed();
+    let latensie = speed() - timestampe;
+
+    let menu;
+    
+    if (global.menuMode === 'nobutton') {
+        menu = `
 Hai haii ${ucapanWaktu} 👋
 
 *[ I N F O - B O T ]*
@@ -680,14 +801,18 @@ Hai haii ${ucapanWaktu} 👋
 *wita*: ${wita}
 *wit*: ${wit}
 
-┏─『 \`MAIN\` 』
+${menuCategories}
+
+┏─『 \`MAIN MENU\` 』
 │ ⿻ ${prefix}script
 │ ⿻ ${prefix}tes
 │ ⿻ ${prefix}ping
 │ ⿻ ${prefix}owner
 ┗─────────────❐
 
-┏─『 \`OWNER\` 』
+
+┏─『 \`OWNER MENU\` 』
+│ ⿻ ${prefix}setmenu nobutton/button
 │ ⿻ ${prefix}mode self/public
 │ ⿻ ${prefix}onlygc on/off
 │ ⿻ ${prefix}setimgmenu
@@ -696,17 +821,21 @@ Hai haii ${ucapanWaktu} 👋
 │ ⿻ ${prefix}delsampah
 │ ⿻ ${prefix}delsesi
 │ ⿻ ${prefix}backup
-│ ⿻ ${prefix}getsession 
+│ ⿻ ${prefix}getsession
+│ ⿻ ${prefix}cekidch
+│ ⿻ ${prefix}join
 ┗─────────────❐
 
-┏─『 \`ARTIFICIAL\` 』
+┏─『 \`ARTIFICIAL MENU\` 』
 │ ⿻ ${prefix}ai on/off
 │ ⿻ ${prefix}yousearch
 │ ⿻ ${prefix}cody
 │ ⿻ ${prefix}flux 
 ┗─────────────❐
 
-┏─『 \`GROUP\` 』
+┏─『 \`GROUP MENU\` 』
+│ ⿻ ${prefix}notifikasigc on/off
+│ ⿻ ${prefix}afk
 │ ⿻ ${prefix}antilinkgc
 │ ⿻ ${prefix}linkgroup
 │ ⿻ ${prefix}setppgroup
@@ -719,7 +848,7 @@ Hai haii ${ucapanWaktu} 👋
 │ ⿻ ${prefix}closetime
 ┗─────────────❐
 
-┏─『 \`MAKER\` 』
+┏─『 \`MAKER MENU\` 』
 │ ⿻ ${prefix}brat text
 │ ⿻ ${prefix}bratvideo text
 │ ⿻ ${prefix}sticker
@@ -730,22 +859,25 @@ Hai haii ${ucapanWaktu} 👋
 │ ⿻ ${prefix}wasted
 ┗─────────────❐
 
-┏─『 \`STICKER\` 』
+┏─『 \`STICKER MENU\` 』
 │ ⿻ ${prefix}kuromi
 │ ⿻ ${prefix}pocoyo
 │ ⿻ ${prefix}dino
+│ ⿻ ${prefix}emojimix 😴+🥰
 ┗─────────────❐
 
-┏─『 \`download\` 』
+┏─『 \`download menu\` 』
+│ ⿻ ${prefix}pinterestdl
 │ ⿻ ${prefix}play
 │ ⿻ ${prefix}ytmp3
 │ ⿻ ${prefix}ytmp4
 │ ⿻ ${prefix}tiktok
 │ ⿻ ${prefix}tiksave
 │ ⿻ ${prefix}igdl
+│ ⿻ ${prefix}fbdl
 ┗─────────────❐
 
-┏─『 \`SEARCH\` 』
+┏─『 \`SEARCH MENU\` 』
 │ ⿻ ${prefix}pinterest
 │ ⿻ ${prefix}rumaysho
 │ ⿻ ${prefix}caribuku
@@ -754,19 +886,18 @@ Hai haii ${ucapanWaktu} 👋
 │ ⿻ ${prefix}soundcloud
 ┗─────────────❐
 
-┏─『 \`BERITA\` 』
+┏─『 \`BERITA MENU\` 』
 │ ⿻ ${prefix}gempa
 │ ⿻ ${prefix}liputan6
 ┗─────────────❐
 
-┏─『 \`STALKER \` 』
+┏─『 \`STALKER MENU\` 』
 │ ⿻ ${prefix}tikstalk 
 │ ⿻ ${prefix}githubstalk
 │ ⿻ ${prefix}igstalk
 ┗─────────────❐
 
-┏─『 \`PRIMBON \` 』
-│ ⿻ ${prefix}top text
+┏─『 \`PRIMBON MENU\` 』
 │ ⿻ ${prefix}apakah [text]
 │ ⿻ ${prefix}bagaimanakah [text]
 │ ⿻ ${prefix}kapankah [text]
@@ -776,7 +907,7 @@ Hai haii ${ucapanWaktu} 👋
 │ ⿻ ${prefix}hobycek [text]
 ┗─────────────❐
 
-┏─『 \`GAME \` 』
+┏─『 \`GAME MENU\` 』
 │ ⿻ ${prefix}tebak kata
 │ ⿻ ${prefix}tebak tebakan
 │ ⿻ ${prefix}tebak bendera
@@ -787,17 +918,29 @@ Hai haii ${ucapanWaktu} 👋
 │ ⿻ ${prefix}tebak asahotak
 │ ⿻ ${prefix}tebak susunkata
 │ ⿻ ${prefix}tebak kimia
-│ ⿻ ${prefix}tebak kabupaten
 │ ⿻ ${prefix}tebak gambar
 │ ⿻ ${prefix}tebak bendera2
 │ ⿻ ${prefix}tebak jkt48
 ┗─────────────❐
 
-┏─『 \`TOOLS\` 』
+┏─『 \`TOOLS MENU\` 』
+│ ⿻ ${prefix}hd
+│ ⿻ ${prefix}remini
 │ ⿻ ${prefix}tourl
 │ ⿻ ${prefix}ssweb
 │ ⿻ ${prefix}translate 
 │ ⿻ ${prefix}languages
+┗─────────────❐
+
+┏─『 \`MENU SETTING\` 』
+│ ⿻ ${prefix}addmenu
+│ ⿻ ${prefix}dellmenu
+│ ⿻ ${prefix}addperintah
+│ ⿻ ${prefix}dellperintah
+│ ⿻ ${prefix}addlist
+│ ⿻ ${prefix}addrespon
+│ ⿻ ${prefix}dellrespon
+│ ⿻ ${prefix}listrespon
 ┗─────────────❐
 
 ┏─ *TQ TO:*
@@ -808,15 +951,210 @@ Hai haii ${ucapanWaktu} 👋
 │   - Clairity Api
 │   - And All Creator
 ┗─────────────❐
-`
-          fuzzy.sendMessage(from, {
-            image: {
-              url: global.menuimgUrl
-            },
-            caption: menu
-          });
+
+> type this to get the script:
+> *.script*
+        `;
+     fuzzy.sendMessage(from, {
+        image: { url: global.menuimgUrl },
+        caption: menu
+    });
+    } else {
+let menuCategoriess = "";
+if (categories.length > 0) {
+    categories.forEach((cat, index) => {
+        menuCategoriess += `\n🏷 *${cat.category.toUpperCase()}*\n`;
+
+        // Tampilkan perintah dalam kategori
+        if (Array.isArray(cat.items)) {
+            cat.items.forEach(item => {
+                menuCategoriess += `</> ${prefix}${item.cmd}\n`;
+            });
+        } else if (cat.items && cat.items.cmd) {
+            menuCategoriess += `</> ${prefix}${cat.items.cmd}\n`;
+        }
+    });
+} else {
+    menuCategoriess = "";
 }
-break
+
+        menu = `
+┌──[ 📌 INFO BOT ]───
+│ 🌟 Nama: ${global.botname}
+│ 🚀 Speed: ${latensie.toFixed(4)} detik
+│ 👥 Users: ${datauser.length}
+└────────────────
+
+${menuCategoriess}
+
+🏷 *MAIN MENU*
+</> .script
+</> .tes
+</> .ping
+</> .owner
+
+🏷 *OWNER MENU*
+</> ${prefix}setmenu nobutton/button
+</> ${prefix}mode self/public
+</> ${prefix}onlygc on/off
+</> ${prefix}setimgmenu
+</> ${prefix}setimgbot
+</> ${prefix}setbotname
+</> ${prefix}delsampah
+</> ${prefix}delsesi
+</> ${prefix}backup
+</> ${prefix}getsession
+</> ${prefix}join
+</> ${prefix}cekidch
+
+🏷 *ARTIFICIAL MENU*
+</> ${prefix}ai on/off
+</> ${prefix}yousearch
+</> ${prefix}cody
+</> ${prefix}flux 
+
+🏷 *GROUP MENU*
+</> ${prefix}notifikasigc on/off
+</> ${prefix}antilinkgc
+</> ${prefix}linkgroup
+</> ${prefix}setppgroup
+</> ${prefix}kick
+</> ${prefix}add
+</> ${prefix}everyone
+</> ${prefix}hidetag
+</> ${prefix}delete
+</> ${prefix}opentime
+</> ${prefix}closetime
+
+🏷 *MAKER MENU*
+</> ${prefix}brat text
+</> ${prefix}bratvideo text
+</> ${prefix}sticker
+</> ${prefix}stickergif
+</> ${prefix}qc
+</> ${prefix}emojimix
+</> ${prefix}qcwhite
+</> ${prefix}wasted
+
+🏷 *STICKER MENU*
+</> ${prefix}kuromi
+</> ${prefix}pocoyo
+</> ${prefix}dino
+</> ${prefix}emojimix 😴+🥰
+
+🏷 *DOWNLOAD MENU*
+</> ${prefix}pinterestdl
+</> ${prefix}play
+</> ${prefix}ytmp3
+</> ${prefix}ytmp4
+</> ${prefix}tiktok
+</> ${prefix}tiksave
+</> ${prefix}igdl
+</> ${prefix}fbdl
+
+🏷 *SEARCH MENU*
+</> ${prefix}pinterest
+</> ${prefix}rumaysho
+</> ${prefix}caribuku
+</> ${prefix}kajian
+</> ${prefix}gamedva
+</> ${prefix}soundcloud
+
+🏷 *BERITA MENU*
+</> ${prefix}gempa
+</> ${prefix}liputan6
+
+🏷 *STALK MENU*
+</> ${prefix}tikstalk 
+</> ${prefix}githubstalk
+</> ${prefix}igstalk
+
+🏷 *PRIMBON MENU*
+</> ${prefix}apakah [text]
+</> ${prefix}bagaimanakah [text]
+</> ${prefix}kapankah [text]
+</> ${prefix}bisakah [text]
+</> ${prefix}watakcek [text]
+</> ${prefix}cebelapaimutci [text]
+</> ${prefix}hobycek [text]
+
+🏷 *GAME MENU*
+</> ${prefix}tebak kata
+</> ${prefix}tebak tebakan
+</> ${prefix}tebak bendera
+</> ${prefix}tebak kalimat
+</> ${prefix}tebak lirik
+</> ${prefix}tebak tekateki
+</> ${prefix}tebak siapakahaku
+</> ${prefix}tebak asahotak
+</> ${prefix}tebak susunkata
+</> ${prefix}tebak kimia
+</> ${prefix}tebak gambar
+</> ${prefix}tebak bendera2
+</> ${prefix}tebak jkt48
+
+🏷 *TOOLS MENU*
+</> ${prefix}hd
+</> ${prefix}remini
+</> ${prefix}tourl
+</> ${prefix}ssweb
+</> ${prefix}translate 
+</> ${prefix}languages
+
+🏷 *MENU SETTING*
+</> ${prefix}addmenu
+</> ${prefix}dellmenu
+</> ${prefix}addperintah
+</> ${prefix}dellperintah
+</> ${prefix}addlist
+</> ${prefix}addrespon
+</> ${prefix}dellrespon
+</> ${prefix}listrespon
+
+> click the button to get script
+        `;
+await fuzzy.sendMessage(m.chat, {
+  footer: `© ${global.botname} - 2025`,
+  buttons: [
+    {
+      buttonId: `.script`,
+      buttonText: { displayText: 'S C R I P T' },
+      type: 1
+    },
+    {
+      buttonId: `.owner`,
+      buttonText: { displayText: 'O W N E R' },
+      type: 1
+    }
+  ],
+  headerType: 1,
+  viewOnce: true,
+  document: fs.readFileSync("./package.json"),
+  fileName: `By ${ownername} </>`,
+  mimetype: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  fileLength: 0,
+  caption: menu,
+  contextInfo: {
+   isForwarded: true, 
+   mentionedJid: [m.sender, global.owner+"@s.whatsapp.net"], 
+   forwardedNewsletterMessageInfo: {
+   newsletterJid: global.idch,
+   newsletterName: global.namech
+   }, 
+    externalAdReply: {
+      title: `Hai haii ${ucapanWaktu} 👋`,
+      thumbnailUrl: global.imgUrl,
+      sourceUrl: "",
+      mediaType: 1,
+      renderLargerThumbnail: true,
+    },
+  },
+})
+    }
+
+
+}
+break;
 //======[ AI ]======\\
 case 'yousearch': {
   let input = `Ex : ${prefix + command} Siapakah Presiden Indonesia Sekarang`
@@ -954,13 +1292,247 @@ case 'cody': {
         });
       }
       break
+case "cekidch": case "idch": {
+if (!text) return m.reply("linknya mana?")
+if (!text.includes("https://whatsapp.com/channel/")) return m.reply("Link tautan tidak valid")
+let result = text.split('https://whatsapp.com/channel/')[1]
+let res = await fuzzy.newsletterMetadata("invite", result)
+let teks = `
+* *ID :* ${res.id}
+* *Nama :* ${res.name}
+* *Total Pengikut :* ${res.subscribers}
+* *Status :* ${res.state}
+* *Verified :* ${res.verification == "VERIFIED" ? "Terverifikasi" : "Tidak"}
+`
+return m.reply(teks)
+}
+break
+case "joingc": case "join": {
+if (!isCreator) return reply("cuman owner yg bisa gunain ini")
+if (!text) return m.reply("linkgcnya mana?")
+if (!text.includes("chat.whatsapp.com")) return m.reply("Link tautan tidak valid")
+let result = text.split('https://chat.whatsapp.com/')[1]
+let id = await fuzzy.groupAcceptInvite(result)
+m.reply(`Berhasil bergabung ke dalam grup ${id}`)
+}
+break
 
+case "addlist":
+case "addrespon": {
+if (!isCreator) return reply(mess.owner)
+if (!text) return m.reply("cmd|responnya")
+if (!text.split("|")) return m.reply("cmd|responnya")
+let result = text.split("|")
+if (result.length < 2) return m.reply("cmd|responnya")
+const [ cmd, respon ] = result
+let res = list.find(e => e.cmd == cmd.toLowerCase())
+if (res) return m.reply("Cmd respon sudah ada")
+let obj = {
+cmd: cmd.toLowerCase(), 
+respon: respon
+}
+list.push(obj)
+fs.writeFileSync("./media/database/list.json", JSON.stringify(list, null, 2))
+m.reply(`Berhasil menambah cmd respon *${cmd.toLowerCase()}* kedalam database respon`)
+}
+break
+
+case "dellrespon":
+case "delrespon": {
+if (!isCreator) return reply(mess.owner)
+if (!text) return m.reply("cmd\n\n ketik *.listrespon* untuk melihat semua cmd")
+const cmd = text.toLowerCase()
+let res = list.find(e => e.cmd == cmd.toLowerCase())
+if (!res) return m.reply("Cmd respon tidak ditemukan\nketik *.listrespon* untuk melihat semua cmd respon")
+let position = list.indexOf(res)
+await list.splice(position, 1)
+fs.writeFileSync("./media/database/list.json", JSON.stringify(list, null, 2))
+m.reply(`Berhasil menghapus cmd respon *${cmd.toLowerCase()}* dari database respon`)
+}
+break
+
+case "listrespon": {
+if (!isCreator) return reply(mess.owner)
+if (list.length < 1) return m.reply("Tidak ada cmd respon")
+let teks = "\n *#- List all cmd response*\n"
+await list.forEach(e => teks += `\n* *Cmd :* ${e.cmd}\n${e.respon}`)
+m.reply(`${teks}`)
+}
+break
+case "addmenu": {
+    if (!isCreator) return reply(mess.owner)
+    if (!text) return m.reply("Masukkan nama Menu! Contoh: .addmenu pulsa")
+    
+    let categories = [];
+    try {
+        categories = JSON.parse(fs.readFileSync("./media/database/listmenurespon.json"));
+    } catch (err) {
+        fs.writeFileSync("./media/database/listmenurespon.json", JSON.stringify([], null, 2));
+    }
+    
+    const categoryName = text.toLowerCase();
+    
+    let existingCategory = categories.find(cat => cat.category === categoryName);
+    if (existingCategory) return m.reply(`menu *${categoryName}* sudah ada!`);
+    
+    categories.push({
+        category: categoryName,
+        items: []
+    });
+    
+   fs.writeFileSync("./media/database/listmenurespon.json", JSON.stringify(categories, null, 2));
+    
+    m.reply(`Berhasil menambahkan menu *${categoryName}* ke database!`);
+}
+break;
+
+case "dellmenu":
+case "delmenu": {
+    if (!isCreator) return reply(mess.owner)
+    if (!text) return m.reply("Masukkan nama menu yang ingin dihapus!")
+    
+    let categories = [];
+    try {
+        categories = JSON.parse(fs.readFileSync("./media/database/listmenurespon.json"));
+    } catch (err) {
+        return m.reply("Database menu kosong atau tidak ditemukan!");
+    }
+    
+    
+    const categoryName = text.toLowerCase();
+    
+    let categoryIndex = categories.findIndex(cat => cat.category === categoryName);
+    if (categoryIndex === -1) return m.reply(`menu *${categoryName}* tidak ditemukan!`);
+    
+    categories.splice(categoryIndex, 1);
+    
+    fs.writeFileSync("./media/database/listmenurespon.json", JSON.stringify(categories, null, 2));
+    
+    m.reply(`Berhasil menghapus menu *${categoryName}*!`);
+}
+break;
+
+case "addrespon":
+case "additems":
+case "addperintah": {
+    if (!isCreator) return reply(mess.owner)
+    if (!text) return m.reply("Format: .addperintah menu|perintah|responnya")
+    
+    const parts = text.split("|");
+    if (parts.length < 3) return m.reply("Format tidak valid! Gunakan: menu|perintah|responnya");
+    
+    const categoryName = parts[0].toLowerCase();
+    const cmdName = parts[1].toLowerCase().trim();
+    const respon = parts[2].trim();
+    
+    let categories = [];
+    try {
+        categories = JSON.parse(fs.readFileSync("./media/database/listmenurespon.json"));
+    } catch (err) {
+        return m.reply("Database menu kosong atau tidak ditemukan!");
+    }
+    
+    let category = categories.find(cat => cat.category === categoryName);
+    if (!category) return m.reply(`Kategori *${categoryName}* tidak ditemukan! Buat dulu dengan .addcategory`);
+    
+    let existingItem = category.items.find(item => item.cmd === cmdName);
+    if (existingItem) return m.reply(`Perintah *${cmdName}* sudah ada dalam kategori *${categoryName}*!`);
+    
+    category.items.push({
+        cmd: cmdName,
+        respon: respon
+    });
+    
+    // Simpan perubahan
+    fs.writeFileSync("./media/database/listmenurespon.json", JSON.stringify(categories, null, 2));
+    
+    m.reply(`Berhasil menambahkan perintah *${cmdName}* ke kategori *${categoryName}*!`);
+}
+break;
+
+case "dellperintah": {
+    if (!isCreator) return reply(mess.owner)
+    if (!text) return m.reply("Format: .dellperintah menunya|perintahnya")
+    
+    const parts = text.split("|");
+    if (parts.length < 2) return m.reply("Format tidak valid! Gunakan: .dellperintah menunya|perintahnya");
+    
+    const categoryName = parts[0].toLowerCase();
+    const cmdName = parts[1].toLowerCase().trim();
+
+   let categories = [];
+    try {
+        categories = JSON.parse(fs.readFileSync("./media/database/listmenurespon.json"));
+    } catch (err) {
+        return m.reply("Database menu kosong atau tidak ditemukan!");
+    }
+    
+    let category = categories.find(cat => cat.category === categoryName);
+    if (!category) return m.reply(`menu *${categoryName}* tidak ditemukan!`);
+    
+    let itemIndex = category.items.findIndex(item => item.cmd === cmdName);
+    if (itemIndex === -1) return m.reply(`Perintah *${cmdName}* tidak ditemukan dalam menu *${categoryName}*!`);
+    
+    category.items.splice(itemIndex, 1);
+    
+    // Simpan perubahan
+    fs.writeFileSync("./media/database/listmenurespon.json", JSON.stringify(categories, null, 2));
+    
+    m.reply(`Berhasil menghapus perintah *${cmdName}* dari menu *${categoryName}*!`);
+}
+break;
+
+case "menus": {
+    let categories = [];
+    try {
+        categories = JSON.parse(fs.readFileSync("./media/database/listmenurespon.json"));
+    } catch (err) {
+        return m.reply("Database kategori kosong atau tidak ditemukan!");
+    }
+    
+    if (categories.length === 0) return m.reply("Belum ada menu yang tersedia.");
+    
+    let text = "*DAFTAR KATEGORI MENU*\n\n";
+    categories.forEach((cat, index) => {
+        text += `${index + 1}. ${cat.category}\n`;
+        
+        if (Array.isArray(cat.items)) {
+            cat.items.forEach(item => {
+                text += `   ${prefix}${item.cmd}\n`;
+            });
+        } else if (cat.items && cat.items.cmd) {
+            text += `   ${prefix}${cat.items.cmd}\n`;
+        }
+        
+        text += "\n";
+    });
+    
+    text += "Gunakan command dengan nama kategori untuk melihat daftar menu dalam kategory tersebut.";
+    m.reply(text);
+}
+break;
+case 'notifikasigc':
+case "notificationgc": {
+if (!m.isGroup) return reply(mess.group)
+if (!isAdmins && !isCreator) return reply("admin doang");
+if (!text) return m.reply("on/off")
+if (text == "on") {
+if (global.db.data.chats[m.chat].welcome == true) return m.reply(`*Welcome* di grup ini sudah aktif!`)
+global.db.data.chats[m.chat].welcome = true
+return m.reply("Berhasil menyalakan *notifikasi* di grup ini")
+} else if (text == "off") {
+if (global.db.data.chats[m.chat].welcome == false) return m.reply(`*Welcome* di grup ini tidak aktif!`)
+global.db.data.chats[m.chat].welcome = false
+return m.reply("Berhasil mematikan *notifikasi* di grup ini")
+} else return m.reply("on/off")
+}
+break
       case "hidetag":
       case "z":
       case "h":
         {
           if (!m.isGroup) return reply("gc doang");
-          if (!isAdmin && !isCreator) return reply("admin doang");
+          if (!isAdmins && !isCreator) return reply("admin doang");
           if (!m.quoted && !text) return reply(example("teksnya/replyteks"));
           var teks = m.quoted ? m.quoted.text : text;
           var member = await groupMetadata.participants.map((e) => e.id);
@@ -982,14 +1554,9 @@ case 'cody': {
           members.map(async adm => {
             mems.push(adm.id.replace('c.us', 's.whatsapp.net'));
           });
-          fuzzy.sendMessage(from, {
-            text: `⚠️ Warning ⚠️\n\nPlease be aware of group links being shared in this group.`,
-            contextInfo: {
-              mentionedJid: mems
-            }
-          }, {
-            quoted: m
-          });
+
+           reply(`⚠️ Warning ⚠️\n\nPlease be aware of group links being shared in this group.`)
+            
         }
         else if (args[0] === "off") {
           if (!antisalurgc) return reply('Antilinkgc is not active in this group.');
@@ -1095,7 +1662,22 @@ setTimeout(() => {
   reply(open)
 }, timer)
 break
+      case 'afk': {
+        try {
+          var ppimg = await fuzzy.profilePictureUrl(m.sender, 'image');
+        }
+        catch (err) {
+          console.log(err);
+          var ppimg = 'https://i0.wp.com/www.gambarunik.id/wp-content/uploads/2019/06/Top-Gambar-Foto-Profil-Kosong-Lucu-Tergokil-.jpg';
+        }
 
+        let user = global.db.data.users[m.sender]
+        user.afkTime = +new Date
+        user.afkReason = text
+        let afkteks = `${pushname} sekarang Kamu Lagi Afk dengan Alasan? ${text ? ': ' + text : 'tidak ada alasan'}`
+        m.reply(afkteks)
+      }
+      break
 case 'add': {
   if (!m.isGroup) return reply(mess.group)
   if (!isBotAdmins) return reply(mess.Badmin)
@@ -1144,6 +1726,51 @@ case 'capcut':{
   }
 }
 break
+case 'fbdl': {
+
+  async function fetchFbVideo(url) {
+    const res = await axios.get(`https://api.vreden.my.id/api/fbdl?url=${url}`);
+    return res.data.data;
+  }
+
+  const fburl = args[0]; // Link Facebook diberikan sebagai argumen
+
+  if (!fburl) {
+    return m.reply('Masukkan URL Facebook yang ingin diunduh.');
+  }
+
+  reply('Tunggu sebentar, sedang mengunduh video dari Facebook...');
+  
+
+  try {
+    const result = await fetchFbVideo(fburl);
+
+    if (!result || !result.status) {
+      return m.reply('Gagal mengunduh video. Pastikan URL benar.');
+    }
+
+    // Menggunakan link HD jika tersedia, jika tidak gunakan SD
+    const videoUrl = result.hd_url || result.sd_url;
+    const caption = `Judul: ${result.title || 'Video Facebook'}`;
+
+    m.reply('Video berhasil ditemukan! Mengirim video...');
+    await fuzzy.sendMessage(m.chat, {
+      video: {
+        url: videoUrl,
+      },
+      caption: caption,
+      fileName: `fb.mp4`,
+      mimetype: 'video/mp4'
+    }, {
+      quoted: m
+    });
+    
+  } catch (error) {
+    console.error('Error fetching Facebook video:', error);
+    m.reply('Maaf, terjadi kesalahan saat mengunduh video.');
+  }
+}
+break;
 case 'igdl': {
   reply('Tunggu sebentar, sedang mengunduh video dari Instagram...');
 
@@ -1311,6 +1938,94 @@ break;
   }
 }
 break;
+      case 'pinterestdl':
+      case 'pindl': {
+        const {
+          JSDOM
+        } = require("jsdom");
+
+        class Pinterest {
+          async getURL(url) {
+            try {
+              const response = await axios.get(url);
+              const dom = new JSDOM(response.data);
+              const document = dom.window.document;
+              let contentUrl = '';
+              const video = document.querySelector('video');
+              if (video) {
+                const videoUrl = video.getAttribute('src');
+                contentUrl = videoUrl.replace('hls', '720p').replace('.m3u8', '.mp4');
+              }
+              else {
+                const img = document.querySelector('meta[property="og:image"]');
+                if (img) {
+                  contentUrl = img.getAttribute('content');
+                }
+              }
+              return contentUrl;
+            }
+            catch (error) {
+              console.error('Error:', error.message);
+              return '';
+            }
+          }
+
+          async getBuffer(rawUrl) {
+            try {
+              const url = await this.getURL(rawUrl);
+              const response = await axios.get(url, {
+                responseType: 'arraybuffer'
+              });
+              return response.data;
+            }
+            catch (error) {
+              console.error('Error:', error.message);
+              return null;
+            }
+          }
+        }
+
+        if (!args[0]) {
+          return reply(m.chat, `Harap masukkan URL Pinterest.\nContoh: ${usedPrefix}${command} <url>`, m);
+        }
+
+        const url = args[0];
+        const pinterest = new Pinterest();
+
+        await fuzzy.sendMessage(m.chat, {
+          react: {
+            text: '🕒',
+            key: m.key
+          }
+        });
+
+        const buffer = await pinterest.getBuffer(url);
+
+        if (buffer) {
+          const contentUrl = await pinterest.getURL(url);
+          const isImage = contentUrl.endsWith('.jpg') || contentUrl.endsWith('.png') || contentUrl.endsWith('.jpeg');
+          if (isImage) {
+            await fuzzy.sendMessage(m.chat, {
+              image: buffer,
+              caption: "Berhasil mengunduh gambar dari Pinterest!"
+            }, {
+              quoted: m
+            });
+          }
+          else {
+            await fuzzy.sendMessage(m.chat, {
+              video: buffer,
+              caption: "Berhasil mengunduh video dari Pinterest!"
+            }, {
+              quoted: m
+            });
+          }
+        }
+        else {
+          reply("Gagal mengambil konten dari URL yang diberikan. Pastikan URL benar atau coba lagi nanti.");
+        }
+      }
+      break
 case 'ytmp4': {
   if (!text) return reply(`Gunakan dengan format ${command} link\n\nContoh:\n\n${command} link`);
           
@@ -2026,6 +2741,26 @@ break;
         await execSync(`rm -rf clairity-${dyn}.zip`);
       }
       break
+      case "rvo": case "readviewonce": {
+if (!m.quoted) return m.reply("dengan reply pesannya")
+let msg = m.quoted.message
+    let type = Object.keys(msg)[0]
+if (!msg[type].viewOnce) return m.reply("Pesan itu bukan viewonce!")
+let media = await downloadContentFromMessage(msg[type], type == 'imageMessage' ? 'image' : type == 'videoMessage' ? 'video' : 'audio')
+    let buffer = Buffer.from([])
+    for await (const chunk of media) {
+        buffer = Buffer.concat([buffer, chunk])
+    }
+    if (/video/.test(type)) {
+        return fuzzy.sendMessage(m.chat, {video: buffer, caption: msg[type].caption || ""}, {quoted: m})
+    } else if (/image/.test(type)) {
+        return fuzzy.sendMessage(m.chat, {image: buffer, caption: msg[type].caption || ""}, {quoted: m})
+    } else if (/audio/.test(type)) {
+        return fuzzy.sendMessage(m.chat, {audio: buffer, mimetype: "audio/mpeg", ptt: true}, {quoted: m})
+    } 
+}
+break
+
 case 'creator':
 case 'owner': {
   const Kontol = await m.reply("ini dia ownerku yang baik hati dan tidak sombong, jangan di spam yaa kalo gak di bales!!")
