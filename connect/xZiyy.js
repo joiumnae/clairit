@@ -738,6 +738,7 @@ fileName: 'creds.json'
 break
 case 'setmenu':
 case 'settingmenu': {
+if (!isCreator) return m.reply(mess.owner)
     if (args[0] === 'button') {
         global.menuMode = 'button';
         reply('✅ Mode menu diubah ke button');
