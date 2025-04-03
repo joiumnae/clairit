@@ -1534,7 +1534,7 @@ break
         {
           if (!m.isGroup) return reply("gc doang");
           if (!isAdmins && !isCreator) return reply("admin doang");
-          if (!m.quoted && !text) return reply(example("teksnya/replyteks"));
+          if (!m.quoted && !text) return reply("teksnya/replyteks");
           var teks = m.quoted ? m.quoted.text : text;
           var member = await groupMetadata.participants.map((e) => e.id);
           fuzzy.sendMessage(m.chat, { text: teks, mentions: [...member] });
