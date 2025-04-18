@@ -12,7 +12,7 @@ module.exports = {
         }
 
         const clairityApi = `https://aqul-brat.hf.space/?text=${encodeURIComponent(q.trim())}`;
-        const siputApi = `https://siputzx-bart.hf.space/?q=${encodeURIComponent(q.trim())}`;
+        const siputApi = `https://clairity-nine.vercel.app/api/brat?text=${encodeURIComponent(q.trim())}`;
 
        reply('_Tunggu sebentar, sedang memproses..._')
         
