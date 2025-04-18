@@ -53,6 +53,7 @@ const ytdl = require('ytdl-core')
 const speed = require('performance-now')
 const more = String.fromCharCode(8206); 
 const readmore = more.repeat(4001);
+const { UploadFileUgu } = require('../library/uploader')
 const { bytesToSize, getRandomFile, smsg, checkBandwidth, sleep, formatSize, getRandom, format, getBuffer, isUrl, jsonformat, nganuin, pickRandom, runtime, clockString, shorturl, formatp, fetchJson, color, getGroupAdmins } = require("../library/myfunc");
 const { addExif } = require('../library/exif')
 const yetedln = require("../media/scraper/yetedln")
@@ -81,10 +82,9 @@ let _family100 = db.data.game.family100 = []
 const list = JSON.parse(fs.readFileSync("./media/database/list.json"))
 
 
-module.exports = fuzzy = async (fuzzy, m, msg, chatUpdate, store) => {
+module.exports = fuzzy = async (fuzzy, m, msg, chatUpdate, store, groupCache) => {
 const { type, sender, pushname, isGroup } = m
 try {
-
 // no multi prefix
 //must use prefix
 var body = (m.mtype === 'interactiveResponseMessage') ? JSON.parse(m.message.interactiveResponseMessage.nativeFlowResponseMessage.paramsJson).id : (m.mtype === 'conversation') ? m.message.conversation : (m.mtype == 'imageMessage') ? m.message.imageMessage.caption : (m.mtype == 'videoMessage') ? m.message.videoMessage.caption : (m.mtype == 'extendedTextMessage') ? m.message.extendedTextMessage.text : (m.mtype == 'buttonsResponseMessage') ? m.message.buttonsResponseMessage.selectedButtonId : (m.mtype == 'listResponseMessage') ? m.message.listResponseMessage.singleSelectReply.selectedRowId : (m.mtype == 'templateButtonReplyMessage') ? m.message.templateButtonReplyMessage.selectedId : (m.mtype == 'messageContextInfo') ? (m.message.buttonsResponseMessage?.selectedButtonId || m.message.listResponseMessage?.singleSelectReply.selectedRowId || m.text) : ""
@@ -196,12 +196,12 @@ if (user) {
  let chats = global.db.data.chats[m?.chat]
  if (typeof chats !== 'object') global.db.data.chats[m?.chat] = {}
  if (chats) {
- if (!('isBanned' in chat)) chat.isBanned = false
+ if (!('isBannedChat' in chat)) chat.isBannedChat = false
  if (!('autoai' in chats)) chats.autoai = false
  if (!('welcome' in chats)) chats.welcome = false
 } else global.db.data.chats[m.chat] = {
 autoai: false,
-isBanned: false,
+isBannedChat: false,
 welcome: false,
 }
 // setting
@@ -230,10 +230,13 @@ fs.writeFileSync('./media/database/datauser.json', JSON.stringify(datauser, null
 }
 //======[ SETTING ]=======\\
 // self public
-if ((m?.chat in global.db.data.chats || m?.sender in global.db.data.users)) {
-let chat = global.db.data.chats[m?.chat]
-if (chat && chat.isBanned && !isCreator) return
+if (m?.chat in global.db.data.chats || m?.sender in global.db.data.users) {
+  let chat = global.db.data.chats[m?.chat];
+  let user = global.db.data.users[m?.sender];
+
+  if (user && chat && (chat?.isBannedChat || user?.isBanned) && !isCreator) return;
 }
+
 
 // AUTOREAD
 if (db.data.settings[botNumber].autoread) { fuzzy.readMessages([m?.key]) }
@@ -376,15 +379,74 @@ const reply = async (teks) => {
       user.afkReason = ''
     }
 
-    nowa = [`@${global.owner}`]
-    if (budy.includes(nowa) && !m.key.fromMe) {
+    nowa1 = [`@${global.owner}`]
+    if (budy.includes(nowa1) && !m.key.fromMe) {
         reply('jangan tag owner kak, owner lagi sibuk..')
     }
 
-//+++++++[ antilin ]++++++++++
+    nowa = [`bot`]
+    if (nowa.includes(budy) && !isBot && !m.key.fromMe) {
+      a = 'respon-bot'
+      pien = fs.readFileSync(`./media/sound/${a}.mp3`)
 
+      fuzzy.sendMessage(from, {
+        audio: pien,
+        ptt: true,
+        mimetype: "audio/mp4"
+      }, {
+        quoted: m
+      });
+
+    }
+    r2 = ['anj', 'babi', 'mmk', 'tolol']
+    if (budy.includes('anjing') || budy.includes('memek') || budy.includes('kontol') || r2.includes(budy)) {
+      a = 'respon-toxic'
+      pien = fs.readFileSync(`./media/sound/${a}.mp3`)
+
+      fuzzy.sendMessage(from, {
+        audio: pien,
+        ptt: true,
+        mimetype: "audio/mp4"
+      }, {
+        quoted: m
+      });
+
+    }
+
+//+++++++[ antilin ]++++++++++
+    const antitaggclist = JSON.parse(fs.readFileSync("./media/database/antitaggc.json"));
+    const antiGroupTag = m.isGroup ? antitaggclist.includes(from) : false;
   const antilinkgcList = JSON.parse(fs.readFileSync("./media/database/antilinkgc.json"));
     const antisalurgc = m.isGroup ? antilinkgcList.includes(from) : false;
+if (antiGroupTag) {  
+  // Deteksi tag group (groupStatusMentionMessage)
+  if (m.mtype === 'groupStatusMentionMessage') {
+        if (isAdmins) return;
+        if (m.key.fromMe) return;
+        if (isCreator) return;
+        
+    console.log("Tag Group Terdeteksi dari:", m.sender);
+        await fuzzy.sendMessage(m.chat, {
+          delete: {
+            remoteJid: m.chat,
+            fromMe: false,
+            id: m.key.id,
+            participant: m.key.participant
+          }
+        })
+        fuzzy.sendMessage(from, {
+          text: `\`\`\`「 Status Tag Detected 」\`\`\`\n\n@${m.sender.split("@")[0]} has sent a tag status and successfully deleted`,
+          contextInfo: {
+            mentionedJid: [m.sender]
+          }
+        }, {
+          quoted: fvrif
+        })
+    
+    // Use return to exit the function
+    return;
+  }
+}
 
   if (antisalurgc) {
       if (budy.match('chat.whatsapp.com')) {
@@ -727,6 +789,11 @@ reply(`
 `)
 }
 break
+case 'sewabot':
+case 'sewa':{
+reply(global.sewaText)
+}
+break
 case 'getsession': {
 if (!isCreator) return m.reply(mess.owner)
 await fuzzy.sendMessage(m.chat, {
@@ -805,12 +872,12 @@ Hai haii ${ucapanWaktu} 👋
 ${menuCategories}
 
 ┏─『 \`MAIN MENU\` 』
+│ ⿻ ${prefix}sewabot
 │ ⿻ ${prefix}script
 │ ⿻ ${prefix}tes
 │ ⿻ ${prefix}ping
 │ ⿻ ${prefix}owner
 ┗─────────────❐
-
 
 ┏─『 \`OWNER MENU\` 』
 │ ⿻ ${prefix}setmenu nobutton/button
@@ -825,6 +892,11 @@ ${menuCategories}
 │ ⿻ ${prefix}getsession
 │ ⿻ ${prefix}cekidch
 │ ⿻ ${prefix}join
+│ ⿻ ${prefix}reactch
+│ ⿻ ${prefix}banchat
+│ ⿻ ${prefix}listpc
+│ ⿻ ${prefix}listgc
+│ ⿻ ${prefix}leave
 ┗─────────────❐
 
 ┏─『 \`ARTIFICIAL MENU\` 』
@@ -835,9 +907,12 @@ ${menuCategories}
 ┗─────────────❐
 
 ┏─『 \`GROUP MENU\` 』
-│ ⿻ ${prefix}notifikasigc on/off
+│ ⿻ ${prefix}welcome on/off
+│ ⿻ ${prefix}setwelcome
+│ ⿻ ${prefix}setleave
 │ ⿻ ${prefix}afk
 │ ⿻ ${prefix}antilinkgc
+│ ⿻ ${prefix}antitagsw
 │ ⿻ ${prefix}linkgroup
 │ ⿻ ${prefix}setppgroup
 │ ⿻ ${prefix}kick
@@ -845,8 +920,10 @@ ${menuCategories}
 │ ⿻ ${prefix}everyone
 │ ⿻ ${prefix}hidetag
 │ ⿻ ${prefix}delete
+│ ⿻ ${prefix}rvo
 │ ⿻ ${prefix}opentime
 │ ⿻ ${prefix}closetime
+│ ⿻ ${prefix}listonline
 ┗─────────────❐
 
 ┏─『 \`MAKER MENU\` 』
@@ -855,6 +932,7 @@ ${menuCategories}
 │ ⿻ ${prefix}sticker
 │ ⿻ ${prefix}stickergif
 │ ⿻ ${prefix}qc
+│ ⿻ ${prefix}smeme
 │ ⿻ ${prefix}emojimix
 │ ⿻ ${prefix}qcwhite
 │ ⿻ ${prefix}wasted
@@ -865,6 +943,8 @@ ${menuCategories}
 │ ⿻ ${prefix}pocoyo
 │ ⿻ ${prefix}dino
 │ ⿻ ${prefix}emojimix 😴+🥰
+│ ⿻ ${prefix}colong
+│ ⿻ ${prefix}wm
 ┗─────────────❐
 
 ┏─『 \`download menu\` 』
@@ -925,12 +1005,20 @@ ${menuCategories}
 ┗─────────────❐
 
 ┏─『 \`TOOLS MENU\` 』
+│ ⿻ ${prefix}spam-ngl
+│ ⿻ ${prefix}hitamkan
 │ ⿻ ${prefix}hd
 │ ⿻ ${prefix}remini
 │ ⿻ ${prefix}tourl
 │ ⿻ ${prefix}ssweb
 │ ⿻ ${prefix}translate 
 │ ⿻ ${prefix}languages
+┗─────────────❐
+
+┏─『 \`QUOTES MENU\` 』
+│ ⿻ ${prefix}quotes
+│ ⿻ ${prefix}quotesanime
+│ ⿻ ${prefix}quotes-en
 ┗─────────────❐
 
 ┏─『 \`MENU SETTING\` 』
@@ -989,6 +1077,7 @@ if (categories.length > 0) {
 ${menuCategoriess}
 
 🏷 *MAIN MENU*
+</> .sewa
 </> .script
 </> .tes
 </> .ping
@@ -1007,6 +1096,11 @@ ${menuCategoriess}
 </> ${prefix}getsession
 </> ${prefix}join
 </> ${prefix}cekidch
+</> ${prefix}reactch
+</> ${prefix}banchat
+</> ${prefix}listpc
+</> ${prefix}listgc
+</> ${prefix}leave
 
 🏷 *ARTIFICIAL MENU*
 </> ${prefix}ai on/off
@@ -1015,8 +1109,11 @@ ${menuCategoriess}
 </> ${prefix}flux 
 
 🏷 *GROUP MENU*
-</> ${prefix}notifikasigc on/off
+</> ${prefix}welcome on/off
+</> ${prefix}setwelcome
+</> ${prefix}setleave
 </> ${prefix}antilinkgc
+</> ${prefix}antitagsw
 </> ${prefix}linkgroup
 </> ${prefix}setppgroup
 </> ${prefix}kick
@@ -1024,6 +1121,7 @@ ${menuCategoriess}
 </> ${prefix}everyone
 </> ${prefix}hidetag
 </> ${prefix}delete
+</> ${prefix}rvo
 </> ${prefix}opentime
 </> ${prefix}closetime
 
@@ -1033,6 +1131,7 @@ ${menuCategoriess}
 </> ${prefix}sticker
 </> ${prefix}stickergif
 </> ${prefix}qc
+</> ${prefix}smeme
 </> ${prefix}emojimix
 </> ${prefix}qcwhite
 </> ${prefix}wasted
@@ -1042,6 +1141,8 @@ ${menuCategoriess}
 </> ${prefix}pocoyo
 </> ${prefix}dino
 </> ${prefix}emojimix 😴+🥰
+</> ${prefix}colong
+</> ${prefix}wm
 
 🏷 *DOWNLOAD MENU*
 </> ${prefix}pinterestdl
@@ -1095,6 +1196,13 @@ ${menuCategoriess}
 </> ${prefix}tebak jkt48
 
 🏷 *TOOLS MENU*
+</> ${prefix}quotes-en
+</> ${prefix}quotes
+</> ${prefix}quotesanime
+
+🏷 *TOOLS MENU*
+</> ${prefix}spam-ngl
+</> ${prefix}hitamkan
 </> ${prefix}hd
 </> ${prefix}remini
 </> ${prefix}tourl
@@ -1118,13 +1226,18 @@ await fuzzy.sendMessage(m.chat, {
   footer: `© ${global.botname} - 2025`,
   buttons: [
     {
+      buttonId: `.owner`,
+      buttonText: { displayText: 'O W N E R' },
+      type: 1
+    },
+    {
       buttonId: `.script`,
       buttonText: { displayText: 'S C R I P T' },
       type: 1
     },
     {
-      buttonId: `.owner`,
-      buttonText: { displayText: 'O W N E R' },
+      buttonId: `.sewabot`,
+      buttonText: { displayText: 'S E W A B O T' },
       type: 1
     }
   ],
@@ -1337,7 +1450,109 @@ fs.writeFileSync("./media/database/list.json", JSON.stringify(list, null, 2))
 m.reply(`Berhasil menambah cmd respon *${cmd.toLowerCase()}* kedalam database respon`)
 }
 break
+case 'rvo':
+case 'readviewonce': {
+    if (!isAdmins && !isCreator) return reply('hanya admin dan owner')
+    if (!m.quoted) return reply(`Balas pesan viewonce dengan caption ${prefix + command}`);
+    
+    try {
+        const quoted = m.quoted;
+        const media = await quoted.download();
+        const type = quoted.mtype;
 
+        if (type === 'videoMessage') {
+            await fuzzy.sendMessage(m.chat, {
+                video: media,
+                caption: `_Berhasil membuka pesan viewonce_`,
+                mimetype: 'video/mp4'
+            }, { quoted: m });
+
+        } else if (type === 'imageMessage') {
+            await fuzzy.sendMessage(m.chat, {
+                image: media,
+                caption: `_Berhasil membuka pesan viewonce_`
+            }, { quoted: m });
+
+        } else {
+            reply('Jenis pesan viewonce tidak dikenali.');
+        }
+
+    } catch (err) {
+        console.error('Error buka viewonce:', err.message);
+        reply('Gagal membuka pesan viewonce. Mungkin format tidak didukung.');
+    }
+    break;
+}
+case 'rch':
+case 'reactch': {
+    if (!isCreator) return reply('owner only');
+    if (!text) return m.reply("Contoh: .reactch https://whatsapp.com/channel/abc123/456|Teks huruf|style (1/2/3)");
+
+    let result = text.split("|");
+    if (result.length < 2) return m.reply("Format salah! Gunakan: link ch|teks huruf|1");
+
+    const [ch, rawText, style] = result;
+    const match = ch.match(/https:\/\/whatsapp\.com\/channel\/(\w+)(?:\/(\d+))?/);
+    if (!match) return reply("URL tidak valid. Silakan periksa kembali.");
+
+    const channelId = match[1];
+    const chatId = match[2];
+    if (!chatId) return reply("ID chat tidak ditemukan dalam link yang diberikan.");
+
+    function hurufEmojiKotak1(text) {
+        const emojiMap = {
+            A: '🅰️', B: '🅱️', C: '🅲', D: '🅳', E: '🅴', F: '🅵', G: '🅶', H: '🅷', I: '🅸',
+            J: '🅹', K: '🅺', L: '🅻', M: '🅼', N: '🅽', O: '🅾️', P: '🅿️', Q: '🆀',
+            R: '🆁', S: '🆂', T: '🆃', U: '🆄', V: '🆅', W: '🆆', X: '🆇', Y: '🆈', Z: '🆉',
+            ' ': '⬜'
+        };
+        return text.toUpperCase().split('').map(c => emojiMap[c] || c).join('');
+    }
+
+    function hurufEmojiKotak2(text) {
+        const emojiMap = {
+            A: '🄰', B: '🄱', C: '🄲', D: '🄳', E: '🄴', F: '🄵', G: '🄶', H: '🄷', I: '🄸',
+            J: '🄹', K: '🄺', L: '🄻', M: '🄼', N: '🄽', O: '🄾', P: '🄿', Q: '🅀',
+            R: '🅁', S: '🅂', T: '🅃', U: '🅄', V: '🅅', W: '🅆', X: '🅇', Y: '🅈', Z: '🅉',
+            ' ': '🔸'
+        };
+        return text.toUpperCase().split('').map(c => emojiMap[c] || c).join('');
+    }
+
+function hurufEmojiKotak3(text) {
+  const emojiMap = {
+    A: 'Ⓐ', B: 'Ⓑ', C: 'Ⓒ', D: 'Ⓓ', E: 'Ⓔ', F: 'Ⓕ', G: 'Ⓖ', H: 'Ⓗ', I: 'Ⓘ',
+    J: 'Ⓙ', K: 'Ⓚ', L: 'Ⓛ', M: 'Ⓜ', N: 'Ⓝ', O: 'Ⓞ', P: 'Ⓟ', Q: 'Ⓠ',
+    R: 'Ⓡ', S: 'Ⓢ', T: 'Ⓣ', U: 'Ⓤ', V: 'Ⓥ', W: 'Ⓦ', X: 'Ⓧ', Y: 'Ⓨ', Z: 'Ⓩ',
+    ' ': '⬜' // simbol spasi
+  };
+
+  return text.toUpperCase().split('').map(c => emojiMap[c] || c).join('');
+}
+
+    let emojiTeks;
+    switch (style) {
+        case '1':
+            emojiTeks = hurufEmojiKotak1(rawText);
+            break;
+        case '2':
+            emojiTeks = hurufEmojiKotak2(rawText);
+            break;
+        case '3':
+            emojiTeks = hurufEmojiKotak3(rawText);
+            break;
+        default:
+            emojiTeks = rawText;
+    }
+
+    fuzzy.newsletterMetadata("invite", channelId).then(data => {
+        if (!data) return reply("Newsletter tidak ditemukan atau terjadi kesalahan.");
+        fuzzy.newsletterReactMessage(data.id, chatId, emojiTeks)
+            .then(() => m.reply(`Sukses react dengan style ${style || 'default'}, tunggu sebentar ya~`))
+            .catch(err => m.reply("Gagal mengirim react: " + err.message));
+    });
+}
+break;
 case "dellrespon":
 case "delrespon": {
 if (!isCreator) return reply(mess.owner)
@@ -1512,6 +1727,7 @@ case "menus": {
     m.reply(text);
 }
 break;
+case 'welcome':
 case 'notifikasigc':
 case "notificationgc": {
 if (!m.isGroup) return reply(mess.group)
@@ -1540,9 +1756,45 @@ break
           fuzzy.sendMessage(m.chat, { text: teks, mentions: [...member] });
         }
         break;
+      case 'antitagsw':
+      case 'antitaggc': {
+        if (!isAdmins && !isCreator) return
+        if (!m.isGroup) return
+        if (args[0] === "on") {
+          if (antiGroupTag) return reply('Sukses Mengaktifikan Tuan✅')
+          antitaggclist.push(from)
+          fs.writeFileSync('./media/database/antitaggc.json', JSON.stringify(antitaggclist))
+          reply('Success in turning on antiGroupTag in this group')
+          var groupe = await fuzzy.groupMetadata(from)
+          var members = groupe['participants']
+          var mems = []
+          members.map(async adm => {
+            mems.push(adm.id.replace('c.us', 's.whatsapp.net'))
+          })
+          fuzzy.sendMessage(from, {
+            text: `\`\`\`「 ⚠️Warning⚠️ 」\`\`\`\n\nanti tag status`,
+            contextInfo: {
+              mentionedJid: [m.sender]
+            }
+          }, {
+            quoted: m
+          })
+        }
+        else if (args[0] === "off") {
+          if (!antiGroupTag) return reply('Sukses Menonaktifkan Tuan✅')
+          let off = antibott.indexOf(from)
+          antitaggclist.splice(off, 1)
+          fs.writeFileSync('./media/database/antitaggc.json', JSON.stringify(antitaggclist))
+          reply('Success in turning off antiGroupTag in this group')
+        }
+        else {
+          await reply(`Please Type The Option\n\nExample: ${prefix + command} on\nExample: ${prefix + command} off\n\non to enable\noff to disable`)
+        }
+      }
+      break
       case 'antilinkgc': {
-        if (!isAdmins) return reply('You are not an admin!');
-        if (!m.isGroup) return reply('This command can only be used in groups!');
+          if (!isAdmins && !isCreator) return reply("admin doang");
+         if (!m.isGroup) return reply('This command can only be used in groups!');
 
         if (args[0] === "on") {
           if (antisalurgc) return reply('Antilinkgc is already active in this group.');
@@ -1571,8 +1823,6 @@ break
         }
       }
       break;
-
-
 case 'setppgroup':
 case 'setppgrup':
 case 'setppgc': {
@@ -1587,6 +1837,7 @@ case 'setppgc': {
 break
 case 'linkgroup':
 case 'linkgc': {
+  if (!isAdmins && !isCreator) return reply("admin doang");
   if (!isBotAdmins) return reply(mess.Badmin)
   let response = await fuzzy.groupInviteCode(from)
   fuzzy.sendText(from, `https://chat.whatsapp.com/${response}\n\nLink Group : ${groupMetadata.subject}`, m, {
@@ -2169,6 +2420,52 @@ case 'play': {
 }
 break
 //======[ SEARCH ]======\\
+      case 'colong':
+      case 'wm': {
+        if (!m?.quoted) return m.reply('reply with a sticker!')
+        let stiker = false
+        try {
+          let [packname, ...author] = text.split('|')
+          author = (author || []).join('|')
+          let mime = m.quoted.mimetype || ''
+          if (!/webp/.test(mime)) return m.reply('m?.reply with a sticker!')
+          let img = await m.quoted.download()
+          if (!img) return m.reply('Failed to download sticker!')
+          stiker = await addExif(img, packname || '', author || '')
+        }
+        catch (e) {
+          console.error(e)
+          if (Buffer.isBuffer(e)) stiker = e
+          else return m?.reply('An error occurred: ' + e)
+        }
+        finally {
+          if (stiker) fuzzy.sendFile(m?.chat, stiker, 'wms.webp', '', m, false, {
+            asSticker: true
+          })
+          else return m.reply('Conversion failed')
+        }
+      }
+      break
+      case 'smeme':
+      case 'stickermeme':
+      case 'stickmeme': {
+        if (!/webp/.test(mime) && /image/.test(mime)) {
+          if (!text) return reply(`Usage: ${prefix + command} bawah|atas\n\ncontoh !smeme hallo|dek`)
+          atas = text.split('|')[0] ? text.split('|')[0] : '-'
+          bawah = text.split('|')[1] ? text.split('|')[1] : '-'
+          mee = await fuzzy.downloadAndSaveMediaMessage(quoted)
+          mem = await UploadFileUgu(mee)
+          meme = `https://api.memegen.link/images/custom/${encodeURIComponent(atas)}/${encodeURIComponent(bawah)}.png?background=${mem.url}`
+          memek = await fuzzy.sendImageAsSticker(m.chat, meme, m, {
+            packname: global.packname,
+            author: global.author
+          })
+        }
+        else {
+          reply(`Kirim/Balas Gambar Dengan Caption ${prefix + command} text1|text2`)
+        }
+      }
+      break
 case 'pin':
 case 'pinterest': {
     if (!args[0]) return m.reply("Masukkan kata kunci pencarian! Contoh: *!pinterest cat*");
@@ -2201,23 +2498,17 @@ case 'pinterest': {
     }
 }
 break;
-case 'emojimix': {
-  if (!text.includes('+')) return reply(`Contoh: ${prefix + command} 😂+😭`)
-  let [emoji1, emoji2] = text.split('+')
-  if (!emoji1 || !emoji2) return reply(`Contoh: ${prefix + command} 😂+😭`)
-  try {
-    let res = await fetch(`https://fastrestapis.fasturl.cloud/maker/emojimix?emoji1=${emoji1}&emoji2=${emoji2}`)
-    let buffer = await res.buffer()
-    await fuzzy.sendImageAsSticker(m.chat, buffer, m, {
-      packname: ``,
-      author: `${ownername}`
-    })
-  } catch (err) {
-    console.error(err)
-    reply('Terjadi kesalahan: '+err)
-  }
-}
-break
+          case 'emojimix': {
+		let [emoji1, emoji2] = text.split`+`
+		if (!emoji1) return replynano(`Example : ${prefix + command} 😅+🤔`)
+		if (!emoji2) return replynano(`Example : ${prefix + command} 😅+🤔`)
+		let anumojimix = await fetchJson(`https://tenor.googleapis.com/v2/featured?key=AIzaSyAyimkuYQYF_FXVALexPuGQctUWRURdCYQ&contentfilter=high&media_filter=png_transparent&component=proactive&collection=emoji_kitchen_v5&q=${encodeURIComponent(emoji1)}_${encodeURIComponent(emoji2)}`)
+		for (let res of anumojimix.results) {
+		    let encmedia = await fuzzy.sendImageAsSticker(m.chat, res.url, m, { packname: global.packname, author: global.author, categories: res.tags })
+		    
+		}
+	    }
+	    break
 case 'kuromi': {
   try {
     let query = 'kuromi';
@@ -2564,6 +2855,151 @@ case 'liputan6': {
   }
 }
 break;
+//======[ QUOTES ]======\\
+      case 'quotes-en': {
+        async function quotePopular() {
+          try {
+            // Mengambil halaman Goodreads
+            const response = await axios.get('https://www.goodreads.com/quotes');
+            const $ = cheerio.load(response.data);
+            const quotes = [];
+
+            // Scraping data quotes
+            $('.quote').each((i, element) => {
+              const quoteText = $(element).find('.quoteText').text().trim();
+              const author = $(element).find('.authorOrTitle').text().trim();
+
+              quotes.push({
+                quote: quoteText.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim(),
+                author: author || "Unknown"
+              });
+            });
+
+            // Kembalikan hasil berupa array
+            return quotes;
+          }
+          catch (error) {
+            // Tangani error jika ada
+            throw error;
+          }
+        }
+
+        // Memanggil fungsi dan menangani hasil
+        quotePopular().then(hasil => {
+          if (hasil.length === 0) {
+            m.reply('Tidak ada hasil yang ditemukan.');
+            return;
+          }
+
+          // Pilih salah satu secara acak
+          const randomResult = hasil[Math.floor(Math.random() * hasil.length)];
+          const replyText = `_${randomResult.quote}_\n\n` +
+            `~${randomResult.author}`;
+
+          // Kirim balasan
+          m.reply(replyText);
+        }).catch(error => {
+          // Tangani error
+          m.reply('Terjadi kesalahan saat mengambil Quote Popular.');
+          m.reply(error.message);
+        });
+      }
+      break;
+      case 'quotes': {
+        //wm senn
+        async function quotes(input) {
+          return new Promise((resolve, reject) => {
+            fetch('https://jagokata.com/kata-bijak/kata-' + input.replace(/\s/g, '_') + '.html?page=1')
+              .then(res => res.text())
+              .then(res => {
+                const $ = cheerio.load(res)
+                data = []
+                $('div[id="main"]').find('ul[id="citatenrijen"] > li').each(function (index, element) {
+                  x = $(this).find('div[class="citatenlijst-auteur"] > a').text().trim()
+                  y = $(this).find('span[class="auteur-beschrijving"]').text().trim()
+                  z = $(element).find('q[class="fbquote"]').text().trim()
+                  //wm senn
+                  data.push({
+                    author: x,
+                    bio: y,
+                    quote: z
+                  })
+                })
+                data.splice(2, 1)
+                //wm senn
+                if (data.length == 0) return resolve({
+                  creator: '@neoxr - Wildan Izzudin & @ariffb.id - Ariffb',
+                  status: false
+                })
+                resolve({
+                  creator: '@neoxr - Wildan Izzudin & @ariffb.id - Ariffb',
+                  status: true,
+                  data
+                })
+              }).catch(reject)
+          })
+        }
+        //wm senn
+        if (!text) return m.reply("Masukan Tipe Quotes\n\nContoh: .quotes senja")
+        //wm senn
+        let ayam = await quotes(text)
+        //wm senn
+        let jawir = ayam.data
+        let ngawi = pickRandom(jawir)
+        //wm senn
+        let cap = `  
+_${ngawi.quote}_
+
+~ ${ngawi.author}
+`.trim()
+        //wm senn
+        reply(cap)
+      }
+      break
+      case 'quotesanime': {
+        async function quotesAnime() {
+          try {
+            const page = Math.floor(Math.random() * 184);
+            const {
+              data
+            } = await axios.get('https://otakotaku.com/quote/feed/' + page);
+            const $ = cheerio.load(data);
+            const hasil = [];
+            $('div.kotodama-list').each((l, h) => {
+              hasil.push({
+                link: $(h).find('a').attr('href'),
+                gambar: $(h).find('img').attr('data-src'),
+                karakter: $(h).find('div.char-name').text().trim(),
+                anime: $(h).find('div.anime-title').text().trim(),
+                episode: $(h).find('div.meta').text(),
+                up_at: $(h).find('small.meta').text(),
+                quotes: $(h).find('div.quote').text().trim()
+              });
+            });
+            return hasil;
+          }
+          catch (error) {
+            throw error;
+          }
+        }
+
+        quotesAnime().then(hasil => {
+          if (hasil.length === 0) {
+            m.reply('Tidak ada hasil yang ditemukan.');
+            return;
+          }
+
+          // Ambil 1 data saja
+          const randomResult = hasil[Math.floor(Math.random() * hasil.length)];
+          const replyTextt = `[ *QUOTESANIME* ]\n\nQuotes: ${randomResult.quotes}\nAnime: ${randomResult.anime}\nEpisode: ${randomResult.episode}\nUp: ${randomResult.up_at}\nKarakter: ${randomResult.karakter}\nLink: ${randomResult.link}`;
+
+          reply(replyTextt);
+        }).catch(error => {
+          m.reply('Terjadi kesalahan saat merandom di QuotesAnime.');
+          m.reply(error.message);
+        });
+      }
+      break;
 //======[ TOOLS ]======\\
 case 'ssweb': {
   if (!text) return reply(`Gunakan dengan cara ${command} *link*\n\n_Contoh_\n\n${command} https://xZiyy.com`);
@@ -2742,26 +3178,23 @@ break;
         await execSync(`rm -rf clairity-${dyn}.zip`);
       }
       break
-      case "rvo": case "readviewonce": {
-if (!m.quoted) return m.reply("dengan reply pesannya")
-let msg = m.quoted.message
-    let type = Object.keys(msg)[0]
-if (!msg[type].viewOnce) return m.reply("Pesan itu bukan viewonce!")
-let media = await downloadContentFromMessage(msg[type], type == 'imageMessage' ? 'image' : type == 'videoMessage' ? 'video' : 'audio')
-    let buffer = Buffer.from([])
-    for await (const chunk of media) {
-        buffer = Buffer.concat([buffer, chunk])
-    }
-    if (/video/.test(type)) {
-        return fuzzy.sendMessage(m.chat, {video: buffer, caption: msg[type].caption || ""}, {quoted: m})
-    } else if (/image/.test(type)) {
-        return fuzzy.sendMessage(m.chat, {image: buffer, caption: msg[type].caption || ""}, {quoted: m})
-    } else if (/audio/.test(type)) {
-        return fuzzy.sendMessage(m.chat, {audio: buffer, mimetype: "audio/mpeg", ptt: true}, {quoted: m})
-    } 
+
+case 'setwelcome':{
+   if (!isAdmins && !isCreator) return reply('only admin & creator')
+   if (!m.isGroup) return reply('only gc')
+   if (!text) return reply('Masukkan teks welcome-nya!\nContoh: .setwelcome Selamat datang @user di grup @group\n\n\n@user // untuk menyebut user yg masuk\n@group untuk menyebut nama group\n@desc untuk menampilkan deskripsi group');
+   global.db.data.chats[m.chat].welcomeText = text; // Simpan teks welcome per grup
+   reply('Teks welcome berhasil disimpan!');
 }
 break
-
+case 'setleave':{
+   if (!isAdmins && !isCreator) return reply('only admin & creator')
+   if (!m.isGroup) return reply('only gc')
+   if (!text) return reply('Masukkan teks leave-nya!\nContoh: .setleave Selamat tinggal @user di grup @group\n\n\n@user // untuk menyebut user yg masuk\n@group untuk menyebut nama group\n@desc untuk menampilkan deskripsi group');
+   global.db.data.chats[m.chat].leaveText = text; // Simpan teks welcome per grup
+   reply('Teks welcome berhasil disimpan!');
+}
+break
 case 'creator':
 case 'owner': {
   const Kontol = await m.reply("ini dia ownerku yang baik hati dan tidak sombong, jangan di spam yaa kalo gak di bales!!")
@@ -2775,6 +3208,7 @@ case 'owner': {
 }
 break
 case 'setimgmenu': {
+  if (!isCreator) return reply(mess.owner)
          if (!quoted) return reply(`Send/Reply Media With Captions ${prefix + command}`)
         try {
           let media = await fuzzy.downloadAndSaveMediaMessage(quoted, makeid(5))
@@ -2791,6 +3225,7 @@ case 'setimgmenu': {
 }
 break
 case 'setimgreply': {
+  if (!isCreator) return reply(mess.owner)
          if (!quoted) return reply(`Send/Reply Media With Captions ${prefix + command}`)
         try {
           let media = await fuzzy.downloadAndSaveMediaMessage(quoted, makeid(5))
@@ -2807,16 +3242,19 @@ case 'setimgreply': {
 }
 break
 case 'setbotname': {
+  if (!isCreator) return reply(mess.owner)
   if (!text) return reply(`mana text nya?\n\ncontoh:\n${prefix + command} mayura bot`)
   global.botname = text
 }
 break
 case 'setownername': {
+  if (!isCreator) return reply(mess.owner)
   if (!text) return reply(`mana text nya?\n\ncontoh:\n${prefix + command} mayura bot`)
   global.ownername = text
 }
 break
 case 'setownernumber': {
+  if (!isCreator) return reply(mess.owner)
   if (!text) return reply(`mana text nya?\n\ncontoh:\n${prefix + command} mayura bot`)
   global.owner = text
 }
@@ -2962,38 +3400,78 @@ break
         break;
       }
 case 'igstalk': {
-    if (!args[0]) return m.reply("Masukkan username Instagram! Contoh: *#stalkig siputzx_*");
+/*
+Jangan Hapus Wm Bang 
 
-    let username = args[0];
-    let url = `https://api.siputzx.my.id/api/stalk/Instagram?user=${username}`;
+*Instagram Stalker  Case*
 
-    try {
-        let response = await fetch(url);
-        let data = await response.json();
+Stalking Account Instagram Via Username 
 
-        if (!data.status) return m.reply("Gagal mengambil data. Pastikan username benar.");
+*[Sumber]*
+https://whatsapp.com/channel/0029Vb3u2awADTOCXVsvia28
 
-        let user = data.data.user;
-        let result = `*Instagram Stalker*\n\n` +
-            `🔹 *Username:* ${user.username}\n` +
-            `🔹 *Full Name:* ${user.full_name}\n` +
-            `🔹 *Bio:* ${user.biography}\n` +
-            `🔹 *Kategori:* ${user.category || "Tidak ada"}\n` +
-            `🔹 *Followers:* ${user.follower_count}\n` +
-            `🔹 *Following:* ${user.following_count}\n` +
-            `🔹 *Posts:* ${user.media_count}\n` +
-            `🔹 *Verified:* ${user.is_verified ? "✅ Yes" : "❌ No"}\n` +
-            `🔹 *Private:* ${user.is_private ? "🔒 Yes" : "🔓 No"}\n` +
-            `🔹 *Business Account:* ${user.is_business ? "✅ Yes" : "❌ No"}\n` +
-            `🔹 *External URL:* ${user.external_url || "Tidak ada"}\n`;
+*[Sumber Scrape]*
 
-        let profilePic = user.hd_profile_pic ? user.hd_profile_pic.url : user.profile_pic_url;
-        
-        fuzzy.sendMessage(from, { image: { url: profilePic }, caption: result }, { quoted: m });
-    } catch (error) {
-        console.error(error);
-        m.reply("Terjadi kesalahan saat mengambil data.");
+Jazxcode 
+*/
+
+  if (!args[0]) return m.reply('Masukkan Username Yamg Ingin Di Stalk\n\n*Example : .igstalk jokowi*');
+  
+  try {
+    const query = args[0];
+    const endpoint = 'https://privatephotoviewer.com/wp-json/instagram-viewer/v1/fetch-profile';
+    const payload = { find: query };
+    const headers = {
+      'Content-Type': 'application/json',
+      'Accept': '*/*',
+      'X-Requested-With': 'XMLHttpRequest',
+      'User-Agent': 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Mobile Safari/537.36',
+      'Referer': 'https://privatephotoviewer.com/'
+    };
+
+    const { data } = await axios.post(endpoint, payload, { headers });
+    const html = data.html;
+    const $ = cheerio.load(html);
+    let profilePic = $('#profile-insta').find('.col-md-4 img').attr('src');
+    if (profilePic && profilePic.startsWith('//')) {
+      profilePic = 'https:' + profilePic;
     }
+    const name = $('#profile-insta').find('.col-md-8 h4.text-muted').text().trim();
+    const username = $('#profile-insta').find('.col-md-8 h5.text-muted').text().trim();
+    const stats = {};
+    $('#profile-insta')
+      .find('.col-md-8 .d-flex.justify-content-between.my-3 > div')
+      .each((i, el) => {
+        const statValue = $(el).find('strong').text().trim();
+        const statLabel = $(el).find('span.text-muted').text().trim().toLowerCase();
+        if (statLabel.includes('posts')) {
+          stats.posts = statValue;
+        } else if (statLabel.includes('followers')) {
+          stats.followers = statValue;
+        } else if (statLabel.includes('following')) {
+          stats.following = statValue;
+        }
+      });
+    const bio = $('#profile-insta').find('.col-md-8 p').text().trim();
+
+    let caption = `- *Name :* ${name}\n`
+    caption += `- *Username :* ${username}\n`
+    caption += `- *Posts :* ${stats.posts}\n`
+    caption += `- *Followers :* ${stats.followers}\n`
+    caption += `- *Following :* ${stats.following}\n`
+    caption += `- *Bio :* ${bio}`;
+    
+    if (profilePic) {
+      await fuzzy.sendMessage(m.chat, { 
+        image: { url: profilePic },
+        caption: caption
+      }, { quoted: m });
+    } else {
+      await m.reply(caption);
+    }
+  } catch (error) {
+    m.reply('Tidak Ada Akun Tersebut Atau Error');
+  }
 }
 break;
     case 'tiktokstalk':
@@ -3199,28 +3677,149 @@ break;
         })
       }
       break
-      case 'bagaimanakah': {
-        if (!m.isGroup) return m.reply('Kusus group')
-        const bagaimanakah = body.slice(0)
-        const bagai = ['Kita Kenal?', 'Nanya Terus deh', 'Tidak Tahu', 'Gua tabok boleh ?', 'Cari Aja Sendiri', 'Kurang Tahu', 'Mana Saya Tahu, Saya kan ikan', 'Hah kamu tanya sama aku trus aku tanya ke siapa dong', 'Whahahaha ga tau 😑']
-        const mana = bagai[Math.floor(Math.random() * bagai.length)]
-        fuzzy.sendMessage(from, {
-          contextInfo: {
-            externalAdReply: {
-              showAdAttribution: true,
-              title: ``,
-              body: `${ucapanWaktu}`,
-              previewType: "PHOTO",
-              thumbnailUrl: global.imgUrl,
-              sourceUrl: `${global.linkig}`,
+case "listgc": {
+  try {
+    let groupResult = await fuzzy.groupFetchAllParticipating();
+    let gcall = Object.values(groupResult || {});
+    
+    let listgc = '\n';
+    gcall.forEach((u, i) => {
+      listgc += `${i+1}. ${u.subject}\nID: ${u.id}\n\n`;
+    });
+    
+    await fuzzy.sendMessage(m.chat, { text: listgc }, { quoted: m });
+    
+  } catch (error) {
+    console.error("Error:", error);
+    await fuzzy.sendMessage(m.chat, { text: `Error: ${error.message}` }, { quoted: m });
+  }
+}
+break
+case 'leave':
+case "leavegc": {
+  try {
+    const groupId = args[0];
+    
+    if (!groupId) {
+      return fuzzy.sendMessage(m.chat, {
+        text: "Silahkan masukkan ID grup yang ingin ditinggalkan.\n\nContoh: .leavegc 1203634192724892480@g.us"
+      }, { quoted: m });
+    }
+      if (!groupId.endsWith("@g.us")) {
+      return fuzzy.sendMessage(m.chat, {
+        text: "Format ID grup tidak valid. ID grup harus diakhiri dengan @g.us"
+      }, { quoted: m });
+    }
+    console.log(`Mencoba keluar dari grup dengan ID: ${groupId}`);
+    await fuzzy.groupLeave(groupId);
+    
+    fuzzy.sendMessage(m.chat, {
+      text: `✅ Berhasil keluar dari grup dengan ID: ${groupId}`
+    }, { quoted: m });
+    
+  } catch (error) {
+    console.error("Error dalam leavegc:", error);
+    fuzzy.sendMessage(m.chat, {
+      text: `❌ Gagal keluar dari grup: ${error.message}`
+    }, { quoted: m });
+  }
+}
+break
+case "listpc": {
+  try {
+    const chats = Object.values(fuzzy.chatCache || {});
+    
+    if (chats.length === 0) {
+      return fuzzy.sendMessage(m.chat, {
+        text: "Tidak ada chat pribadi yang tersimpan dalam cache."
+      }, { quoted: m });
+    }
+    
+    let listpc = '📋 *DAFTAR CHAT PRIBADI*\n\n';
+    chats.forEach((chat, i) => {
+      listpc += `*${i+1}.* ${chat.name}\n`;
+      listpc += `• *ID :* ${chat.id}\n`;
+      listpc += `• *Last Seen :* ${new Date(chat.timestamp).toLocaleString()}\n\n`;
+    });
+    
+    fuzzy.sendMessage(m.chat, {
+      text: listpc
+    }, { quoted: m });
+    
+  } catch (error) {
+    fuzzy.sendMessage(m.chat, {
+      text: `❌ Error: ${error.message}`
+    }, { quoted: m });
+  }
+}
+break
+case 'spam-ngl':
+case 'nglspam': {
+if (!isCreator) return reply(mess.owner)
+    if (!text.split("|")[0] || !text.split("|")[1] || !text.split("|")[2]) {
+        return reply("Masukan username, pesan, dan jumlah spam!\nContoh: .nglspam username|haloo|5");
+    }
+async function sendSpamMessage(username, message, spamCount) {
+    let counter = 0;
+    while (counter < spamCount) {
+        try {
+            const date = new Date();
+            const minutes = date.getMinutes();
+            const hours = date.getHours();
+            const formattedDate = `${hours}:${minutes}`;
+            const deviceId = crypto.randomBytes(21).toString('hex');
+            const url = 'https://ngl.link/api/submit';
+            const headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/109.0',
+                'Accept': '*/*',
+                'Accept-Language': 'en-US,en;q=0.5',
+                'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+                'X-Requested-With': 'XMLHttpRequest',
+                'Sec-Fetch-Dest': 'empty',
+                'Sec-Fetch-Mode': 'cors',
+                'Sec-Fetch-Site': 'same-origin',
+                'Referer': `https://ngl.link/${username}`,
+                'Origin': 'https://ngl.link'
+            };
+            const body = `username=${username}&question=${message}&deviceId=${deviceId}&gameSlug=&referrer=`;
+
+            const response = await fetch(url, {
+                method: 'POST',
+                headers,
+                body,
+                mode: 'cors',
+                credentials: 'include'
+            });
+
+            if (response.status !== 200) {
+                console.log(`[${formattedDate}] [Err] Ratelimited`);
+                await new Promise(resolve => setTimeout(resolve, 25000));
+            } else {
+                counter++;
+                console.log(`[${formattedDate}] [Msg] Sent: ${counter}`);
             }
-          },
-          text: '*Pertanyaan : ' + bagaimanakah + '*\n\n*Jawaban :* ' + mana
-        }, {
-          quoted: m
-        })
-      }
-      break
+        } catch (error) {
+            console.error(`[${formattedDate}] [Err] ${error}`);
+            await new Promise(resolve => setTimeout(resolve, 5000));
+        }
+    }
+};
+    const [username, message, count] = text.split("|");
+    const spamCount = parseInt(count, 10);
+
+    if (isNaN(spamCount) || spamCount <= 0) {
+        return reply("Jumlah spam harus berupa angka positif!");
+    }
+
+    try {
+        await sendSpamMessage(username, message, spamCount);
+        reply(`Sukses mengirim ${spamCount} pesan NGL ke ${username}`);
+    } catch (e) {
+        console.error(e); // Menambahkan logging error untuk debug
+        return reply("Fitur error, coba lagi nanti.");
+    }
+}
+break
       case 'apakah': {
         if (!m.isGroup) return m.reply('Kusus group')
         const apakah = body.slice(0)
@@ -3544,6 +4143,7 @@ break;
         else reply(`- GAME TEBAK -\n\n.tebak kata\n.tebak tebakan\n.tebak bendera\n.tebak kalimat\n.tebak lirik\n.tebak tekateki\n.tebak siapakahaku\n.tebak asahotak\n.tebak susunkata\n.tebak kimia\n.tebak kabupaten\n.tebak gambar\n.tebak bendera2\n.tebak jkt48`)
       }
       break
+
 default:
   function resetSession(user) {
     if (global.db.data.users[user]?.aiSession) {
