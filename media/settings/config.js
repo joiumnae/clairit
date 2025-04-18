@@ -12,13 +12,34 @@ const version = require("@whiskeysockets/baileys/package.json").version
 // contoh ['1','2','3']
 // ['1','2','3','4']
 global.ownerNumber = [`${global.owner}`,'no2','no3'] // no owner yang dapat mengakses all fitur
-global.email = '@gmail.com' // kosongkan jika tidak punya
-global.web = '.com' // kosongkan jika tidak punya
-global.location = 'Banten' // isi daerah mu atau tempat tinggal mu jika tidak mau kosongkan
-global.packname = 'Mayura bot' // wm yg ada di sticker
-global.author = 'dibuat oleh xZiyy' // wm yg ada di sticker
+global.email = "@gmail.com" // kosongkan jika tidak punya
+global.web = ".com" // kosongkan jika tidak punya
+global.location = "Banten" // isi daerah mu atau tempat tinggal mu jika tidak mau kosongkan
+global.packname = "Mayura bot" // wm yg ada di sticker
+global.author = "dibuat oleh xZiyy" // wm yg ada di sticker
 global.imgUrl = "https://files.catbox.moe/s99a5l.jpg" // ubah menggunakan !setimgbot
 global.menuimgUrl = "https://files.catbox.moe/7lo0hv.jpg" // ubah menggunakan !setimgmenu
+
+sewabot = `
+(+) OPEN SEWA BOT
+
+- Price List
+   • Rp. 10.000 (bulan)
+   • Rp. 50.000 (permanent)
+  
+  <\> Keuntungan
+  - Antilink group
+  - notifikasi welcome, goodbye, promote, demote
+  - bisa custom sambutan welcome, goodbye
+  - management group 
+  - hidetag, tagall, antiTagsw dll
+  - fitur game, biar gak suntuk di group
+  
+order here:
+(owner) https://wa.me//${global.owner}
+
+`
+// koma di atas ini jangan di hapus
 
 global.idch = "120363418582467615@newsletter"
 global.namech = "- Mayura bot -"
