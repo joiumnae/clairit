@@ -1,20 +1,10 @@
-/*BASE ORI PAKOYOFFC
-CREDITS GUA JANGAN DI HAPUS
-
-THANKS TO
--PAKOYOFFC
-
-LINK SALURAN GW : https://whatsapp.com/channel/0029VanWleP0lwghgX4Iib2D
-*/
-
 const fs = require('fs')
 const { tmpdir } = require("os")
 const Crypto = require("crypto")
-const ffmpegPath = require('@ffmpeg-installer/ffmpeg').path;
 const ff = require('fluent-ffmpeg')
 const webp = require("node-webpmux")
 const path = require("path")
-ff.setFfmpegPath(ffmpegPath);
+
 
 async function imageToWebp (media) {
 
@@ -89,7 +79,7 @@ async function writeExifImg (media, metadata) {
 
     if (metadata.packname || metadata.author) {
         const img = new webp.Image()
-        const json = { "sticker-pack-id": `https://github.com/DikaArdnt/Hisoka-Morou`, "sticker-pack-name": metadata.packname, "sticker-pack-publisher": metadata.author, "emojis": metadata.categories ? metadata.categories : [""] }
+        const json = { "sticker-pack-id": `https://github.com/SenkuXZ`, "sticker-pack-name": metadata.packname, "sticker-pack-publisher": metadata.author, "emojis": metadata.categories ? metadata.categories : [""] }
         const exifAttr = Buffer.from([0x49, 0x49, 0x2A, 0x00, 0x08, 0x00, 0x00, 0x00, 0x01, 0x00, 0x41, 0x57, 0x07, 0x00, 0x00, 0x00, 0x00, 0x00, 0x16, 0x00, 0x00, 0x00])
         const jsonBuff = Buffer.from(JSON.stringify(json), "utf-8")
         const exif = Buffer.concat([exifAttr, jsonBuff])
@@ -110,7 +100,7 @@ async function writeExifVid (media, metadata) {
 
     if (metadata.packname || metadata.author) {
         const img = new webp.Image()
-        const json = { "sticker-pack-id": `https://github.com/DikaArdnt/Hisoka-Morou`, "sticker-pack-name": metadata.packname, "sticker-pack-publisher": metadata.author, "emojis": metadata.categories ? metadata.categories : [""] }
+        const json = { "sticker-pack-id": `https://github.com/SenkuXZ`, "sticker-pack-name": metadata.packname, "sticker-pack-publisher": metadata.author, "emojis": metadata.categories ? metadata.categories : [""] }
         const exifAttr = Buffer.from([0x49, 0x49, 0x2A, 0x00, 0x08, 0x00, 0x00, 0x00, 0x01, 0x00, 0x41, 0x57, 0x07, 0x00, 0x00, 0x00, 0x00, 0x00, 0x16, 0x00, 0x00, 0x00])
         const jsonBuff = Buffer.from(JSON.stringify(json), "utf-8")
         const exif = Buffer.concat([exifAttr, jsonBuff])
@@ -123,7 +113,10 @@ async function writeExifVid (media, metadata) {
     }
 }
 
+
+
 async function writeExif (media, metadata) {
+
     let wMedia = /webp/.test(media.mimetype) ? media.data : /image/.test(media.mimetype) ? await imageToWebp(media.data) : /video/.test(media.mimetype) ? await videoToWebp(media.data) : ""
     const tmpFileIn = path.join(tmpdir(), `${Crypto.randomBytes(6).readUIntLE(0, 6).toString(36)}.webp`)
     const tmpFileOut = path.join(tmpdir(), `${Crypto.randomBytes(6).readUIntLE(0, 6).toString(36)}.webp`)
@@ -131,7 +124,7 @@ async function writeExif (media, metadata) {
 
     if (metadata.packname || metadata.author) {
         const img = new webp.Image()
-        const json = { "sticker-pack-id": `https://github.com/DikaArdnt/Hisoka-Morou`, "sticker-pack-name": metadata.packname, "sticker-pack-publisher": metadata.author, "emojis": metadata.categories ? metadata.categories : [""] }
+        const json = { "sticker-pack-id": `https://wa.me/6281804680327`, "sticker-pack-name": metadata.packname, "sticker-pack-publisher": metadata.author, "emojis": metadata.categories ? metadata.categories : [""] }
         const exifAttr = Buffer.from([0x49, 0x49, 0x2A, 0x00, 0x08, 0x00, 0x00, 0x00, 0x01, 0x00, 0x41, 0x57, 0x07, 0x00, 0x00, 0x00, 0x00, 0x00, 0x16, 0x00, 0x00, 0x00])
         const jsonBuff = Buffer.from(JSON.stringify(json), "utf-8")
         const exif = Buffer.concat([exifAttr, jsonBuff])
@@ -144,18 +137,6 @@ async function writeExif (media, metadata) {
     }
 }
 
-async function exifAvatar(buffer, packname, author, categories = [''], extra = {}) {
-  const { default: { Image }} = await import('node-webpmux')
-	const img = new Image()
-	const json = { 'sticker-pack-id': 'parel-kntll', 'sticker-pack-name': packname, 'sticker-pack-publisher': author, 'emojis': categories, 'is-avatar-sticker': 1, ...extra }
-	let exifAttr = Buffer.from([0x49, 0x49, 0x2A, 0x00, 0x08, 0x00, 0x00, 0x00, 0x01, 0x00, 0x41, 0x57, 0x07, 0x00, 0x00, 0x00, 0x00, 0x00, 0x16, 0x00, 0x00, 0x00])
-	let jsonBuffer = Buffer.from(JSON.stringify(json), 'utf8')
-	let exif = Buffer.concat([exifAttr, jsonBuffer])
-	exif.writeUIntLE(jsonBuffer.length, 14, 4)
-	await img.load(buffer)
-	 img.exif = exif
-	return await img.save(null)
-}
 async function addExif(webpSticker, packname, author, categories = [''], extra = {}) {
   const img = new webp.Image();
   const stickerPackId = Crypto.randomBytes(32).toString('hex');
@@ -169,5 +150,4 @@ async function addExif(webpSticker, packname, author, categories = [''], extra =
   return await img.save(null)
 }
 
-
-module.exports = { imageToWebp, videoToWebp, writeExifImg, writeExifVid, writeExif, exifAvatar, addExif }
+module.exports = { imageToWebp, videoToWebp, writeExifImg, writeExifVid , writeExif, addExif }
