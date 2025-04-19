@@ -1782,7 +1782,7 @@ break
         }
         else if (args[0] === "off") {
           if (!antiGroupTag) return reply('Sukses Menonaktifkan Tuan✅')
-          let off = antibott.indexOf(from)
+          let off = antitaggclist.indexOf(from)
           antitaggclist.splice(off, 1)
           fs.writeFileSync('./media/database/antitaggc.json', JSON.stringify(antitaggclist))
           reply('Success in turning off antiGroupTag in this group')
