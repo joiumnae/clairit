@@ -12,11 +12,11 @@ const version = require("@whiskeysockets/baileys/package.json").version
 // contoh ['1','2','3']
 // ['1','2','3','4']
 global.ownerNumber = [`${global.owner}`,'no2','no3'] // no owner yang dapat mengakses all fitur
-global.email = "@gmail.com" // kosongkan jika tidak punya
+global.email = "marcelloalexandra@gmail.com" // kosongkan jika tidak punya
 global.web = ".com" // kosongkan jika tidak punya
-global.location = "Banten" // isi daerah mu atau tempat tinggal mu jika tidak mau kosongkan
-global.packname = "Mayura bot" // wm yg ada di sticker
-global.author = "dibuat oleh xZiyy" // wm yg ada di sticker
+global.location = "Jakarta" // isi daerah mu atau tempat tinggal mu jika tidak mau kosongkan
+global.packname = "Annual bot" // wm yg ada di sticker
+global.author = "dibuat oleh cellos" // wm yg ada di sticker
 global.imgUrl = "https://files.catbox.moe/s99a5l.jpg" // ubah menggunakan !setimgbot
 global.menuimgUrl = "https://files.catbox.moe/7lo0hv.jpg" // ubah menggunakan !setimgmenu
 
@@ -41,12 +41,12 @@ order here:
 `
 // koma di atas ini jangan di hapus
 
-global.idch = "120363418582467615@newsletter"
-global.namech = "- Mayura bot -"
+global.idch = "120363334736301537@newsletter"
+global.namech = "- Annual☆ -"
 
 global.mess = {
-    group: "Fitur Hanya Digunakan Untuk Grup!",
-    owner: "Fitur Hanya Digunakan oleh owner bot!",
+    group: "Fitur ini untuk grup cuy!",
+    owner: "Fitur ini untuk owner, lu bkn owner gua!",
     Badmin: "Fitur dapat Digunakan Setelah Bot menjadi ADMIN!",
 }
 
