@@ -17,8 +17,8 @@ global.web = ".com" // kosongkan jika tidak punya
 global.location = "Jakarta" // isi daerah mu atau tempat tinggal mu jika tidak mau kosongkan
 global.packname = "Annual bot" // wm yg ada di sticker
 global.author = "dibuat oleh cellos" // wm yg ada di sticker
-global.imgUrl = "https://files.catbox.moe/ucwrqm.jpg" // ubah menggunakan !setimgbot
-global.menuimgUrl = "https://files.catbox.moe/eqkm4k.jpg" // ubah menggunakan !setimgmenu
+global.imgUrl = "https://files.catbox.moe/575lm8.jpg" // ubah menggunakan !setimgbot
+global.menuimgUrl = "https://files.catbox.moe/575lm8.jpg" // ubah menggunakan !setimgmenu
 
 sewabot = `
 (+) OPEN SEWA BOT
