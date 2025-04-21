@@ -12,13 +12,13 @@ const version = require("@whiskeysockets/baileys/package.json").version
 // contoh ['1','2','3']
 // ['1','2','3','4']
 global.ownerNumber = [`${global.owner}`,'no2','no3'] // no owner yang dapat mengakses all fitur
-global.email = "marcelloalexandra@gmail.com" // kosongkan jika tidak punya
+global.email = "marcelloalexandr4@gmail.com" // kosongkan jika tidak punya
 global.web = ".com" // kosongkan jika tidak punya
 global.location = "Jakarta" // isi daerah mu atau tempat tinggal mu jika tidak mau kosongkan
 global.packname = "Annual bot" // wm yg ada di sticker
 global.author = "dibuat oleh cellos" // wm yg ada di sticker
-global.imgUrl = "https://files.catbox.moe/s99a5l.jpg" // ubah menggunakan !setimgbot
-global.menuimgUrl = "https://files.catbox.moe/7lo0hv.jpg" // ubah menggunakan !setimgmenu
+global.imgUrl = "https://files.catbox.moe/ucwrqm.jpg" // ubah menggunakan !setimgbot
+global.menuimgUrl = "https://files.catbox.moe/eqkm4k.jpg" // ubah menggunakan !setimgmenu
 
 sewabot = `
 (+) OPEN SEWA BOT
