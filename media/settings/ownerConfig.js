@@ -2,9 +2,9 @@
 const fs = require('fs')
 // gausah di ubah rek karna
 // udh ada request pas di scan pairing
-global.ownername = "xZiyy";
-global.owner = "6283159451487";
-global.botname = "clairity bot";
+global.ownername = "cellos";
+global.owner = "6289605352200";
+global.botname = "Oline MD";
 
 let file = require.resolve(__filename)
 fs.watchFile(file, () => {
